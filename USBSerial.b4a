@@ -1,0 +1,119 @@
+﻿Build1=Default,b4a.examplek
+File1=Layout1.bal
+FileGroup1=Default Group
+Group=Default Group
+Library1=core
+Library2=felusbserial
+Library3=usb
+Library4=byteconverter
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="4" android:targetSdkVersion="15"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.DarkTheme)~\n~'End of default text.~\n~
+Module1=felAsyncStreamsText
+Module2=Starter
+NumberOfFiles=1
+NumberOfLibraries=4
+NumberOfModules=2
+Version=11.2
+@EndOfDesignText@
+
+#Region  Project Attributes 
+	#ApplicationLabel: B4A Example USB
+	#VersionCode: 1
+	#VersionName: 
+	'SupportedOrientations possible values: unspecified, landscape or portrait.
+	#SupportedOrientations: unspecified
+	#CanInstallToExternalStorage: False
+	#BridgeLogger: True
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: True
+#End Region
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'These variables can be accessed from all modules.
+	Private usbserial As felUsbSerial
+	Private manager As UsbManager
+	Private bc As ByteConverter
+	Private felAST As felAsyncStreamsText
+End Sub
+
+Sub Globals
+	'These global variables will be redeclared each time the activity is created.
+	'These variables can only be accessed from this module.
+	Private Button1 As Button
+	Private ScrollView1 As ScrollView
+	Private EditText1 As EditText
+	Private EditText2 As EditText
+End Sub
+
+Sub Activity_Resume
+
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.LoadLayout("Layout1")
+   	If FirstTime Then
+    	manager.Initialize
+   	End If
+	getUSBData	
+End Sub
+
+Sub getUSBData 
+   If manager.GetDevices.Length = 0 Then
+     Log("No connected usb devices.")
+   Else
+     Dim device As UsbDevice = manager.GetDevices(0) 'assuming that there is exactly one device
+     If manager.HasPermission(device) = False Then
+       ToastMessageShow("Please allow connection and click again.", True)
+       manager.RequestPermission(device)
+     Else
+       	usbserial.Initialize("serial", device, -1)
+	   	felAST.Initialize(Me, "felAST")
+       	usbserial.BaudRate = 9600
+		usbserial.DataBits = usbserial.DATA_BITS_8
+		usbserial.Parity=usbserial.PARITY_NONE
+		usbserial.StopBits=usbserial.STOP_BITS_1
+       	usbserial.StartReading
+     End If
+   End If
+End Sub
+
+Private Sub serial_DataAvailable (Buffer() As Byte)
+	felAST.astreams_NewData(Buffer)	
+End Sub
+
+Sub felAST_NewText (Text As String) '<--- will be raised when a new line character is found
+	If Text.Length = 19 Then
+		Log("Message received: " & Text)
+		EditText1.Text = Text
+		EditText2.Text = NumericReading(Text)
+	End If
+End Sub
+
+Sub NumericReading(i_reading As String) As Double	
+	Dim matcher1 As Matcher
+	matcher1 = Regex.Matcher("[\d\s]+\.[\d\s]+", i_reading)
+	Do While matcher1.Find = True
+		Dim tmp As String = matcher1.Match.Trim
+		If IsNumber(tmp) Then
+			Return tmp.As(Double)
+		End If
+	Loop
+	Return 0
+End Sub
+
+Sub TestRegex() ' use to test the regex function
+	Dim data As String
+	data = "Please contact mike@gmail.com or john@gmail.com"
+	Dim matcher1 As Matcher
+	matcher1 = Regex.Matcher("\w+@\w+\.\w+", data)
+	Do While matcher1.Find = True
+		Log(matcher1.Match)
+	Loop
+End Sub
